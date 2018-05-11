@@ -1,0 +1,36 @@
+name:                pure-time
+version:             0.7.0.0
+synopsis:
+homepage:            github.com/grumply/pure-time
+license:             BSD3
+license-file:        LICENSE.md
+author:              Sean Mackenzie
+maintainer:          sean@grump.ly
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.10
+
+library
+  build-depends:
+    base >= 4.8 && < 5,
+    hashable >= 1.2 && < 1.3,
+    pure-txt >= 0.7 && < 1,
+    pure-json >= 0.7 && < 1
+
+  hs-source-dirs: src
+
+  exposed-modules:
+    Pure.Data.Time
+
+  if (impl(ghcjs))
+    other-modules:
+      Pure.Data.Time.GHCJS
+
+  else
+    build-depends:
+      time >= 1.6 && < 1.7
+
+    other-modules:
+      Pure.Data.Time.GHC
+
+  default-language: Haskell2010
