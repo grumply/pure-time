@@ -3,7 +3,7 @@ version:             0.7.0.0
 synopsis:
 homepage:            github.com/grumply/pure-time
 license:             BSD3
-license-file:        LICENSE.md
+license-file:        LICENSE
 author:              Sean Mackenzie
 maintainer:          sean@grump.ly
 category:            Web
