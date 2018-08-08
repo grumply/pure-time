@@ -4,9 +4,12 @@ module Pure.Data.Time.GHC where
 import Pure.Data.Txt
 import Pure.Data.JSON
 
+import Data.Ratio
 import GHC.Generics
 
 import Data.Hashable
+
+import Data.Time.Clock.POSIX
 
 -- microseconds since beginning of 1970
 newtype Micros = Micros { getMicros :: Double }
@@ -36,6 +39,22 @@ millis = Millis <$> timeInMillis
 
 timeInMicros :: IO Double
 timeInMicros = posixToMicros <$> getPOSIXTime
+  where
+    posixToMicros =
+        fromIntegral
+      . numerator
+      . toRational
+      . (* 1000000)
+
 
 timeInMillis :: IO Double
 timeInMillis = posixToMillis <$> getPOSIXTime
+  where
+    posixToMillis =
+        fromIntegral
+      . (`div` 1000)
+      . numerator
+      . toRational
+      . (* 1000000)
+
+
