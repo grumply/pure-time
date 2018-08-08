@@ -14,6 +14,7 @@ library
   build-depends:
     base >= 4.8 && < 5,
     hashable >= 1.2 && < 1.3,
+    time >= 1.6 && < 1.7,
     pure-txt >= 0.7 && < 1,
     pure-json >= 0.7 && < 1
 
@@ -27,9 +28,6 @@ library
       Pure.Data.Time.GHCJS
 
   else
-    build-depends:
-      time >= 1.6 && < 1.7
-
     other-modules:
       Pure.Data.Time.GHC
 
