@@ -1,4 +1,4 @@
-{-# LANGUAGE CPP #-}
+{-# LANGUAGE ViewPatterns, CPP #-}
 module Pure.Data.Time (module Export, module Pure.Data.Time) where
 
 #ifdef __GHCJS__
@@ -135,3 +135,15 @@ utcTimeFromMicros :: Micros -> UTCTime
 utcTimeFromMicros =
     posixSecondsToUTCTime
   . posixFromMicros
+
+millisToDiffTime :: Millis -> DiffTime
+millisToDiffTime = picosecondsToDiffTime . round . (* 1e9) . getMillis
+
+microsToDiffTime :: Micros -> DiffTime
+microsToDiffTime = picosecondsToDiffTime . round . (* 1e6) . getMicros
+
+diffMillis :: Millis -> Millis -> NominalDiffTime
+diffMillis (utcTimeFromMillis -> a) (utcTimeFromMillis -> b) = diffUTCTime a b
+
+diffMicros :: Micros -> Micros -> NominalDiffTime
+diffMicros (utcTimeFromMicros -> a) (utcTimeFromMicros -> b) = diffUTCTime a b
