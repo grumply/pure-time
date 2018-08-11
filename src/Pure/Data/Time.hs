@@ -141,8 +141,14 @@ utcTimeFromMicros =
 millisToDiffTime :: Millis -> DiffTime
 millisToDiffTime = picosecondsToDiffTime . round . (* 1e9) . getMillis
 
+diffTimeToMillis :: DiffTime -> Millis
+diffTimeToMillis = Millis . fromInteger . (`div` 1000000000) . diffTimeToPicoseconds
+
 microsToDiffTime :: Micros -> DiffTime
 microsToDiffTime = picosecondsToDiffTime . round . (* 1e6) . getMicros
+
+diffTimeToMicros :: DiffTime -> Micros
+diffTimeToMicros = Micros . fromInteger . (`div` 1000000) . diffTimeToPicoseconds
 
 diffMillis :: Millis -> Millis -> NominalDiffTime
 diffMillis (utcTimeFromMillis -> a) (utcTimeFromMillis -> b) = diffUTCTime a b
