@@ -11,9 +11,9 @@ import Data.Hashable
 
 import Data.Time.Clock.POSIX
 
--- microseconds since beginning of 1970
+-- should be able to correctly represent all whole microseconds up to 285 years
 newtype Micros = Micros { getMicros :: Double }
-  deriving (Show,Eq,Ord,Num,Real,Generic,ToJSON,FromJSON)
+  deriving (Show,Eq,Ord,Num,Real,Fractional,Floating,RealFrac,Generic,ToJSON,FromJSON)
 
 instance ToTxt Micros where
   toTxt (Micros us) = toTxt us
@@ -24,9 +24,9 @@ instance Hashable Micros where
 micros :: IO Micros
 micros = Micros <$> timeInMicros
 
--- milliseconds since beginning of 1970
+-- should be able to correctly represent all whole milliseconds up to 285616 years
 newtype Millis = Millis { getMillis :: Double }
-  deriving (Show,Eq,Ord,Num,Real,Generic,ToJSON,FromJSON)
+  deriving (Show,Eq,Ord,Num,Real,Fractional,Floating,RealFrac,Generic,ToJSON,FromJSON)
 
 instance ToTxt Millis where
   toTxt (Millis ms) = toTxt ms

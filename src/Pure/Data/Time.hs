@@ -1,160 +1,137 @@
-{-# LANGUAGE ViewPatterns, CPP #-}
-module Pure.Data.Time (module Export, module Pure.Data.Time) where
+{-# LANGUAGE ViewPatterns, PatternSynonyms, DeriveGeneric, ScopedTypeVariables, CPP, GeneralizedNewtypeDeriving, InstanceSigs #-}
+module Pure.Data.Time (module Pure.Data.Time, module Export) where
 
-#ifdef __GHCJS__
-import Pure.Data.Time.GHCJS as Export
-#else
-import Pure.Data.Time.GHC as Export
-#endif
+import Data.Coerce
+import GHC.Generics
 
-import Pure.Data.Time.Format
+import Pure.Data.JSON
 
-import Data.Ratio
+import Pure.Data.Time.Internal as Export
 
-import Pure.Data.Txt
-
-import Data.Time.Clock
-import Data.Time.Clock.POSIX
 import Data.Time.Format (FormatTime(..),ParseTime(..))
 import Data.Time.LocalTime (utc,utcToZonedTime)
 
-import qualified Data.Time.Format as Format
+import Unsafe.Coerce -- for NominalDiffTime <-> DiffTime
 
-instance FormatTime Millis where
+newtype Time = Time { getTime :: Millis }
+    deriving (Show,Eq,Ord,Generic,Num,Real,Fractional,Floating,RealFrac,ToJSON,FromJSON)
+
+instance FormatTime Time where
 #if MIN_VERSION_time(1,8,0)
-  formatCharacter c = fmap (\f l p w t -> f l p w (utcToZonedTime utc (utcTimeFromMillis t))) (formatCharacter c)
+  formatCharacter c = fmap (\f l p w t -> f l p w (utcToZonedTime utc (utcTimeFromMillis (getTime t)))) (formatCharacter c)
 #else
-  formatCharacter c = fmap (\f l p t -> f l p (utcToZonedTime utc (utcTimeFromMillis t))) (formatCharacter c)
+  formatCharacter c = fmap (\f l p t -> f l p (utcToZonedTime utc (utcTimeFromMillis (getTime t)))) (formatCharacter c)
 #endif
 
-instance ParseTime Millis where
-  buildTime tl s = fmap utcTimeToMillis (buildTime tl s)
+instance ParseTime Time where
+  buildTime tl s = fmap (coerce . utcTimeToMillis) (buildTime tl s)
 
-instance FormatTime Micros where
-#if MIN_VERSION_time(1,8,0)
-  formatCharacter c = fmap (\f l p w t -> f l p w (utcToZonedTime utc (utcTimeFromMicros t))) (formatCharacter c)
-#else
-  formatCharacter c = fmap (\f l p t -> f l p (utcToZonedTime utc (utcTimeFromMicros t))) (formatCharacter c)
-#endif
+class IsTime t where
+    toTime :: t -> Time
+    fromTime :: Time -> t
 
-instance ParseTime Micros where
-  buildTime tl s = fmap utcTimeToMicros (buildTime tl s)
+instance IsTime Time where
+    toTime   = id
+    fromTime = id
 
-formatTime :: (FromTxt txt, FormatTime t) => String -> t -> txt
-formatTime s t = fromTxt $ toTxt (Format.formatTime Format.defaultTimeLocale s t)
+instance IsTime Millis where
+    toTime   = coerce
+    fromTime = coerce
 
-toDate :: (FromTxt txt, FormatTime t) => t -> txt
-toDate = formatTime "%Y-%m-%d"
+instance IsTime Micros where
+    toTime   = coerce . (/ 1000)
+    fromTime = coerce . (* 1000)
 
-toDateTime :: (FromTxt txt, FormatTime t) => t -> txt
-#if MIN_VERSION_time(1,8,0)
-toDateTime = formatTime "%Y-%m-%dT%H:%M:%S%03Q"
-#else
-toDateTime = formatTime "%Y-%m-%dT%H:%M:%S%Q"
-#endif
+instance IsTime DiffTime where
+    toTime   = coerce . diffTimeToMillis
+    fromTime = millisToDiffTime . coerce
 
-toZonedDateTime :: (FromTxt txt, FormatTime t) => t -> txt
-#if MIN_VERSION_time(1,8,0)
-toZonedDateTime = formatTime "%Y-%m-%dT%H:%M:%S%03Q%z"
-#else
-toZonedDateTime = formatTime "%Y-%m-%dT%H:%M:%S%Q%z"
-#endif
+instance IsTime NominalDiffTime where
+    toTime   = toTime . (unsafeCoerce :: NominalDiffTime -> DiffTime)
+    fromTime = (unsafeCoerce :: DiffTime -> NominalDiffTime) . fromTime
 
-toPrettyTime :: (FromTxt txt, FormatTime t) => t -> txt
-toPrettyTime = formatTime "%b%e, %Y"
+pattern Second :: Time
+pattern Second = Time 1000
 
-parseTime :: (ParseTime t) => String -> Txt -> Maybe t
-parseTime f i = Format.parseTimeM True Format.defaultTimeLocale f (fromTxt i)
+pattern Minute :: Time
+pattern Minute = Time 60000
 
-fromDate :: ParseTime t => Txt -> Maybe t
-fromDate = parseTime "%Y-%m-%d"
+pattern Hour :: Time
+pattern Hour = Time 3600000
 
-fromDateTime :: ParseTime t => Txt -> Maybe t
-#if MIN_VERSION_time(1,8,0)
-fromDateTime = parseTime "%Y-%m-%dT%H:%M:%S%03Q"
-#else
-fromDateTime = parseTime "%Y-%m-%dT%H:%M:%S%Q"
-#endif
+pattern Day :: Time
+pattern Day = Time 86400000
 
-fromZonedDateTime :: ParseTime t => Txt -> Maybe t
-#if MIN_VERSION_time(1,8,0)
-fromZonedDateTime = parseTime "%Y-%m-%dT%H:%M:%S%03Q%z"
-#else
-fromZonedDateTime = parseTime "%Y-%m-%dT%H:%M:%S%Q%z"
-#endif
+pattern Week :: Time
+pattern Week = Time 604800000
 
-fromPrettyTime :: ParseTime t => Txt -> Maybe t
-fromPrettyTime = parseTime "%b%e, %Y"
+pattern Month :: Time
+pattern Month = Time 2628000000
 
-posixToMillis :: POSIXTime -> Millis
-posixToMillis =
-    Millis
-  . fromIntegral
-  . (`div` 1000)
-  . numerator
-  . toRational
-  . (* 1000000)
+pattern Year :: Time
+pattern Year = Time 31536000000
 
-posixFromMillis :: Millis -> POSIXTime
-posixFromMillis =
-  fromRational
-  . (% 1000000)
-  . (* 1000)
-  . round
-  . getMillis
+time :: IO Time
+time = coerce <$> millis
 
-utcTimeToMillis :: UTCTime -> Millis
-utcTimeToMillis =
-    posixToMillis
-  . utcTimeToPOSIXSeconds
+nominalDiffTime :: Time -> Time -> NominalDiffTime
+nominalDiffTime a b = diffMillis (fromTime a) (fromTime b)
 
-utcTimeFromMillis :: Millis -> UTCTime
-utcTimeFromMillis =
-    posixSecondsToUTCTime
-  . posixFromMillis
+diffTime :: Time -> Time -> DiffTime
+diffTime a b = unsafeCoerce (nominalDiffTime a b)
 
-posixToMicros :: POSIXTime -> Micros
-posixToMicros =
-    Micros
-  . fromIntegral
-  . numerator
-  . toRational
-  . (* 1000000)
+seconds :: Int -> Time
+seconds s = Second * (fromIntegral s)
 
-posixFromMicros :: Micros -> POSIXTime
-posixFromMicros =
-  fromRational
-  . (% 1000000)
-  . round
-  . getMicros
+minutes :: Int -> Time
+minutes m = Minute * (fromIntegral m)
 
-utcTimeToMicros :: UTCTime -> Micros
-utcTimeToMicros =
-    posixToMicros
-  . utcTimeToPOSIXSeconds
+hours :: Int -> Time
+hours h = Hour * (fromIntegral h)
 
-utcTimeFromMicros :: Micros -> UTCTime
-utcTimeFromMicros =
-    posixSecondsToUTCTime
-  . posixFromMicros
+days :: Int -> Time
+days d = Day * (fromIntegral d)
 
-millisToDiffTime :: Millis -> DiffTime
-millisToDiffTime = picosecondsToDiffTime . round . (* 1e9) . getMillis
+weeks :: Int -> Time
+weeks w = Week * (fromIntegral w)
 
-diffTimeToMillis :: DiffTime -> Millis
-diffTimeToMillis = Millis . fromInteger . (`div` 1000000000) . diffTimeToPicoseconds
+months :: Int -> Time
+months m = Month * (fromIntegral m)
 
-microsToDiffTime :: Micros -> DiffTime
-microsToDiffTime = picosecondsToDiffTime . round . (* 1e6) . getMicros
+years :: Int -> Time
+years y = Year * (fromIntegral y)
 
-diffTimeToMicros :: DiffTime -> Micros
-diffTimeToMicros = Micros . fromInteger . (`div` 1000000) . diffTimeToPicoseconds
+-- Careful with this; it's reasonably safe (to a millisecond) when
+-- used on proper Time values.
+quotRemTime :: Time -> Time -> (Int,Time)
+quotRemTime n d = 
+  let (q,r) = quotRem (round n) (round d)
+  in (q,fromIntegral r)
 
-diffMillis :: Millis -> Millis -> NominalDiffTime
-diffMillis (utcTimeFromMillis -> a) (utcTimeFromMillis -> b) = diffUTCTime a b
+pattern Seconds :: Int -> Time
+pattern Seconds ss <- ((`div` (round Second)) . round -> ss) where
+    Seconds ss = seconds ss
 
-diffMicros :: Micros -> Micros -> NominalDiffTime
-diffMicros (utcTimeFromMicros -> a) (utcTimeFromMicros -> b) = diffUTCTime a b
+pattern Minutes :: Int -> Time -> Time
+pattern Minutes ms rest <- ((`quotRemTime` Minute) -> (ms,rest)) where
+    Minutes ms rest = minutes ms + rest 
 
-formatDiffTime :: (FromTxt txt, FormatDiffTime t) => String -> t -> txt
-formatDiffTime fs = fromTxt . toTxt . formatDiffTimeWith Format.defaultTimeLocale fs
+pattern Hours :: Int -> Time -> Time
+pattern Hours hs rest <- ((`quotRemTime` Hour) -> (hs,rest)) where
+    Hours hs rest = hours hs + rest
+
+pattern Days :: Int -> Time -> Time
+pattern Days ds rest <- ((`quotRemTime` Day) -> (ds,rest)) where
+    Days ds rest = days ds + rest
+
+pattern Weeks :: Int -> Time -> Time
+pattern Weeks ws rest <- ((`quotRemTime` Week) -> (ws,rest)) where
+    Weeks ws rest = weeks ws + rest
+
+pattern Months :: Int -> Time -> Time
+pattern Months ms rest <- ((`quotRemTime` Month) -> (ms,rest)) where
+    Months ms rest = months ms + rest
+
+pattern Years :: Int -> Time -> Time
+pattern Years ys rest <- ((`quotRemTime` Year) -> (ys,rest)) where
+    Years ys rest = years ys + rest

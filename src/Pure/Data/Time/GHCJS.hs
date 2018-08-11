@@ -9,9 +9,9 @@ import GHC.Generics
 import Data.Ratio
 import Data.Hashable
 
--- microseconds since beginning of 1970
+-- should be able to correctly represent all whole microseconds up to 285 years
 newtype Micros = Micros { getMicros :: Double }
-  deriving (Show,Eq,Ord,Num,Real,Generic,ToJSON,FromJSON)
+  deriving (Show,Eq,Ord,Num,Real,Fractional,Floating,RealFrac,Generic,ToJSON,FromJSON)
 
 instance ToTxt Micros where
   toTxt (Micros us) = toTxt us
@@ -25,9 +25,9 @@ micros = Micros <$> timeInMicros
 timeInMicros =
   (*1000) <$> getTime_micros_js
 
--- milliseconds since beginning of 1970
+-- should be able to correctly represent all whole milliseconds up to 285616 years
 newtype Millis = Millis { getMillis :: Double }
-  deriving (Show,Eq,Ord,Num,Real,Generic,ToJSON,FromJSON)
+  deriving (Show,Eq,Ord,Num,Real,Fractional,Floating,RealFrac,Generic,ToJSON,FromJSON)
 
 instance ToTxt Millis where
   toTxt (Millis ms) = toTxt ms
