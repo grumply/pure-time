@@ -23,6 +23,9 @@ library
   exposed-modules:
     Pure.Data.Time
 
+  other-modules:
+    Pure.Data.Time.Format
+
   if (impl(ghcjs))
     other-modules:
       Pure.Data.Time.GHCJS

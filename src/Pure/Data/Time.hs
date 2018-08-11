@@ -7,6 +7,8 @@ import Pure.Data.Time.GHCJS as Export
 import Pure.Data.Time.GHC as Export
 #endif
 
+import Pure.Data.Time.Format
+
 import Data.Ratio
 
 import Pure.Data.Txt
@@ -38,27 +40,27 @@ instance FormatTime Micros where
 instance ParseTime Micros where
   buildTime tl s = fmap utcTimeToMicros (buildTime tl s)
 
-formatTime :: FormatTime t => String -> t -> Txt
-formatTime s t = toTxt (Format.formatTime Format.defaultTimeLocale s t)
+formatTime :: (FromTxt txt, FormatTime t) => String -> t -> txt
+formatTime s t = fromTxt $ toTxt (Format.formatTime Format.defaultTimeLocale s t)
 
-toDate :: FormatTime t => t -> Txt
+toDate :: (FromTxt txt, FormatTime t) => t -> txt
 toDate = formatTime "%Y-%m-%d"
 
-toDateTime :: FormatTime t => t -> Txt
+toDateTime :: (FromTxt txt, FormatTime t) => t -> txt
 #if MIN_VERSION_time(1,8,0)
 toDateTime = formatTime "%Y-%m-%dT%H:%M:%S%03Q"
 #else
 toDateTime = formatTime "%Y-%m-%dT%H:%M:%S%Q"
 #endif
 
-toZonedDateTime :: FormatTime t => t -> Txt
+toZonedDateTime :: (FromTxt txt, FormatTime t) => t -> txt
 #if MIN_VERSION_time(1,8,0)
 toZonedDateTime = formatTime "%Y-%m-%dT%H:%M:%S%03Q%z"
 #else
 toZonedDateTime = formatTime "%Y-%m-%dT%H:%M:%S%Q%z"
 #endif
 
-toPrettyTime :: FormatTime t => t -> Txt
+toPrettyTime :: (FromTxt txt, FormatTime t) => t -> txt
 toPrettyTime = formatTime "%b%e, %Y"
 
 parseTime :: (ParseTime t) => String -> Txt -> Maybe t
@@ -147,3 +149,6 @@ diffMillis (utcTimeFromMillis -> a) (utcTimeFromMillis -> b) = diffUTCTime a b
 
 diffMicros :: Micros -> Micros -> NominalDiffTime
 diffMicros (utcTimeFromMicros -> a) (utcTimeFromMicros -> b) = diffUTCTime a b
+
+formatDiffTime :: (FromTxt txt, FormatDiffTime t) => String -> t -> txt
+formatDiffTime fs = fromTxt . toTxt . formatDiffTimeWith Format.defaultTimeLocale fs
