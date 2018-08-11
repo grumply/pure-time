@@ -1,9 +1,10 @@
-{-# LANGUAGE ViewPatterns, PatternSynonyms, DeriveGeneric, ScopedTypeVariables, CPP, GeneralizedNewtypeDeriving, InstanceSigs #-}
+{-# LANGUAGE ViewPatterns, PatternSynonyms, DeriveGeneric, ScopedTypeVariables, CPP, GeneralizedNewtypeDeriving, InstanceSigs, RecordWildCards, OverloadedStrings #-}
 module Pure.Data.Time (module Pure.Data.Time, module Export) where
 
 import Data.Coerce
 import GHC.Generics
 
+import Pure.Data.Default
 import Pure.Data.JSON
 
 import Pure.Data.Time.Internal as Export
@@ -13,7 +14,25 @@ import Data.Time.LocalTime (utc,utcToZonedTime)
 
 import Unsafe.Coerce -- for NominalDiffTime <-> DiffTime
 
-newtype Time = Time { getTime :: Millis }
+-- Time and TimeDiff are designed to be stupid easy for the vast majority of use cases
+-- 
+-- Bidirectional patterns:
+--
+-- > let Hours h (Minutes m (Seconds s)) = Seconds 128000
+--
+-- > let Hours h _ = Seconds 128000
+--
+-- > let Seconds s = Hours 35 (Minutes 3 0)
+--
+-- > formatTime "%h" (Hours 3 0)
+--
+-- > formatTime "%w weeks and %d days" (diffTime t1 t2)
+--
+-- > let TimeDiff {..} = timeDiff t1 t2
+-- >     ft = if Time td > Week then "%w" else "%h" 
+-- > in ft TimeDiff {..}
+
+newtype Time = Time_ { getTime :: Millis }
     deriving (Show,Eq,Ord,Generic,Num,Real,Fractional,Floating,RealFrac,ToJSON,FromJSON)
 
 instance FormatTime Time where
@@ -50,26 +69,30 @@ instance IsTime NominalDiffTime where
     toTime   = toTime . (unsafeCoerce :: NominalDiffTime -> DiffTime)
     fromTime = (unsafeCoerce :: DiffTime -> NominalDiffTime) . fromTime
 
+pattern Time :: IsTime t => t -> Time
+pattern Time t <- (fromTime -> t) where
+    Time t = toTime t
+
 pattern Second :: Time
-pattern Second = Time 1000
+pattern Second = 1000
 
 pattern Minute :: Time
-pattern Minute = Time 60000
+pattern Minute = 60000
 
 pattern Hour :: Time
-pattern Hour = Time 3600000
+pattern Hour = 3600000
 
 pattern Day :: Time
-pattern Day = Time 86400000
+pattern Day = 86400000
 
 pattern Week :: Time
-pattern Week = Time 604800000
+pattern Week = 604800000
 
 pattern Month :: Time
-pattern Month = Time 2628000000
+pattern Month = 2628000000
 
 pattern Year :: Time
-pattern Year = Time 31536000000
+pattern Year = 31536000000
 
 time :: IO Time
 time = coerce <$> millis
@@ -80,27 +103,6 @@ nominalDiffTime a b = diffMillis (fromTime a) (fromTime b)
 diffTime :: Time -> Time -> DiffTime
 diffTime a b = unsafeCoerce (nominalDiffTime a b)
 
-seconds :: Int -> Time
-seconds s = Second * (fromIntegral s)
-
-minutes :: Int -> Time
-minutes m = Minute * (fromIntegral m)
-
-hours :: Int -> Time
-hours h = Hour * (fromIntegral h)
-
-days :: Int -> Time
-days d = Day * (fromIntegral d)
-
-weeks :: Int -> Time
-weeks w = Week * (fromIntegral w)
-
-months :: Int -> Time
-months m = Month * (fromIntegral m)
-
-years :: Int -> Time
-years y = Year * (fromIntegral y)
-
 -- Careful with this; it's reasonably safe (to a millisecond) when
 -- used on proper Time values.
 quotRemTime :: Time -> Time -> (Int,Time)
@@ -110,28 +112,88 @@ quotRemTime n d =
 
 pattern Seconds :: Int -> Time
 pattern Seconds ss <- ((`div` (round Second)) . round -> ss) where
-    Seconds ss = seconds ss
+    Seconds ss = Second * (fromIntegral ss)
 
 pattern Minutes :: Int -> Time -> Time
 pattern Minutes ms rest <- ((`quotRemTime` Minute) -> (ms,rest)) where
-    Minutes ms rest = minutes ms + rest 
+    Minutes ms rest = Minute * (fromIntegral ms) + rest 
 
 pattern Hours :: Int -> Time -> Time
 pattern Hours hs rest <- ((`quotRemTime` Hour) -> (hs,rest)) where
-    Hours hs rest = hours hs + rest
+    Hours hs rest = Hour * (fromIntegral hs) + rest
 
 pattern Days :: Int -> Time -> Time
 pattern Days ds rest <- ((`quotRemTime` Day) -> (ds,rest)) where
-    Days ds rest = days ds + rest
+    Days ds rest = Day * (fromIntegral ds) + rest
 
 pattern Weeks :: Int -> Time -> Time
 pattern Weeks ws rest <- ((`quotRemTime` Week) -> (ws,rest)) where
-    Weeks ws rest = weeks ws + rest
+    Weeks ws rest = Week * (fromIntegral ws) + rest
 
 pattern Months :: Int -> Time -> Time
 pattern Months ms rest <- ((`quotRemTime` Month) -> (ms,rest)) where
-    Months ms rest = months ms + rest
+    Months ms rest = Month * (fromIntegral ms) + rest
 
 pattern Years :: Int -> Time -> Time
 pattern Years ys rest <- ((`quotRemTime` Year) -> (ys,rest)) where
-    Years ys rest = years ys + rest
+    Years ys rest = Year * (fromIntegral ys) + rest
+
+data TimeDiff = TimeDiff
+    { milliseconds :: Double
+    , seconds :: Double
+    , minutes :: Double
+    , hours   :: Double
+    , days    :: Double
+    , weeks   :: Double
+    , months  :: Double
+    , years   :: Double
+    } deriving (Show,Generic)
+
+instance Default TimeDiff where 
+    def = TimeDiff 0 0 0 0 0 0 0 0
+
+instance Eq TimeDiff where 
+    (==) t1 t2 = milliseconds t1 == milliseconds t2
+
+instance Ord TimeDiff where
+    compare t1 t2 = compare (milliseconds t1) (milliseconds t2)
+
+instance IsTime TimeDiff where
+    toTime = coerce . (1000 *) . seconds
+    fromTime = flip timeDiff (fromTime 0 :: TimeDiff)
+
+instance FormatTime TimeDiff where
+#if MIN_VERSION_time(1,8,0)
+  formatCharacter c = fmap (\f l p w t -> f l p w (utcToZonedTime utc (utcTimeFromMillis (getTime (toTime t))))) (formatCharacter c)
+#else
+  formatCharacter c = fmap (\f l p t -> f l p (utcToZonedTime utc (utcTimeFromMillis (getTime (toTime t))))) (formatCharacter c)
+#endif
+
+instance ParseTime TimeDiff where
+  buildTime tl s = fmap (fromTime . toTime . utcTimeToMillis) (buildTime tl s)
+
+timeDiff :: (IsTime a, IsTime b) => a -> b -> TimeDiff
+timeDiff (getTime . toTime -> Millis now) (getTime . toTime -> Millis ago) = TimeDiff {..}
+    where
+        d = now - ago
+        second  = 1000
+        minute  = 60    * second
+        hour    = 60    * minute
+        day     = 24    * hour
+        week    = 7     * day
+        month   = 30.42 * day
+        year    = 365   * day
+        milliseconds = d
+        seconds = d / second
+        minutes = d / minute
+        hours   = d / hour
+        days    = d / day
+        weeks   = d / week
+        months  = d / month
+        years   = d / year
+
+timeDiffToDiffTime :: TimeDiff -> DiffTime
+timeDiffToDiffTime = millisToDiffTime . getTime . toTime
+
+diffTimeToTimeDiff :: DiffTime -> TimeDiff
+diffTimeToTimeDiff = fromTime . coerce . diffTimeToMillis

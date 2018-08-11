@@ -16,7 +16,8 @@ library
     hashable >= 1.2 && < 1.3,
     time < 1.9,
     pure-txt >= 0.7 && < 1,
-    pure-json >= 0.7 && < 1
+    pure-json >= 0.7 && < 1,
+    pure-default >= 0.7 && < 1
 
   hs-source-dirs: src
 
