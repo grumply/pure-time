@@ -60,31 +60,37 @@ toZonedDateTime = formatTime "%Y-%m-%dT%H:%M:%S%03Q%z"
 toZonedDateTime = formatTime "%Y-%m-%dT%H:%M:%S%Q%z"
 #endif
 
+toPrettyDate :: (FromTxt txt, FormatTime t) => t -> txt
+toPrettyDate = formatTime "%b %e, %Y"
+
 toPrettyTime :: (FromTxt txt, FormatTime t) => t -> txt
-toPrettyTime = formatTime "%b%e, %Y"
+toPrettyTime = formatTime "%l:%M %p"
 
-parseTime :: (ParseTime t) => String -> Txt -> Maybe t
-parseTime f i = Format.parseTimeM True Format.defaultTimeLocale f (fromTxt i)
+parseTime :: (ToTxt txt, ParseTime t) => String -> txt -> Maybe t
+parseTime f i = Format.parseTimeM True Format.defaultTimeLocale f (fromTxt (toTxt i))
 
-fromDate :: ParseTime t => Txt -> Maybe t
+fromDate :: (ToTxt txt, ParseTime t) => txt -> Maybe t
 fromDate = parseTime "%Y-%m-%d"
 
-fromDateTime :: ParseTime t => Txt -> Maybe t
+fromDateTime :: (ToTxt txt, ParseTime t) => txt -> Maybe t
 #if MIN_VERSION_time(1,8,0)
 fromDateTime = parseTime "%Y-%m-%dT%H:%M:%S%03Q"
 #else
 fromDateTime = parseTime "%Y-%m-%dT%H:%M:%S%Q"
 #endif
 
-fromZonedDateTime :: ParseTime t => Txt -> Maybe t
+fromZonedDateTime :: (ToTxt txt, ParseTime t) => txt -> Maybe t
 #if MIN_VERSION_time(1,8,0)
 fromZonedDateTime = parseTime "%Y-%m-%dT%H:%M:%S%03Q%z"
 #else
 fromZonedDateTime = parseTime "%Y-%m-%dT%H:%M:%S%Q%z"
 #endif
 
-fromPrettyTime :: ParseTime t => Txt -> Maybe t
-fromPrettyTime = parseTime "%b%e, %Y"
+fromPrettyDate :: (ToTxt txt, ParseTime t) => txt -> Maybe t
+fromPrettyDate = parseTime "%b%e, %Y"
+
+fromPrettyTime :: (ToTxt txt, ParseTime t) => txt -> Maybe t
+fromPrettyTime = parseTime "%l:%M %p"
 
 posixToMillis :: POSIXTime -> Millis
 posixToMillis =
