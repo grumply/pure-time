@@ -5,6 +5,7 @@ import Data.Coerce
 import GHC.Generics
 
 import Pure.Data.Default
+
 import Pure.Data.JSON
 
 import Pure.Data.Time.Internal as Export
@@ -15,7 +16,7 @@ import Data.Time.LocalTime (utc,utcToZonedTime)
 import Unsafe.Coerce -- for NominalDiffTime <-> DiffTime
 
 -- Time and TimeDiff are designed to be stupid easy for the vast majority of use cases
--- 
+--
 -- Bidirectional patterns:
 --
 -- > let Hours h (Minutes m (Seconds s)) = Seconds 128000
@@ -29,7 +30,7 @@ import Unsafe.Coerce -- for NominalDiffTime <-> DiffTime
 -- > formatTime "%w weeks and %d days" (diffTime t1 t2)
 --
 -- > let TimeDiff {..} = timeDiff t1 t2
--- >     ft = if Time td > Week then "%w" else "%h" 
+-- >     ft = if Time td > Week then "%w" else "%h"
 -- > in ft TimeDiff {..}
 
 newtype Time = Time_ { getTime :: Millis }
@@ -106,7 +107,7 @@ diffTime a b = unsafeCoerce (nominalDiffTime a b)
 -- Careful with this; it's reasonably safe (to a millisecond) when
 -- used on proper Time values.
 quotRemTime :: Time -> Time -> (Int,Time)
-quotRemTime n d = 
+quotRemTime n d =
   let (q,r) = quotRem (round n) (round d)
   in (q,fromIntegral r)
 
@@ -116,7 +117,7 @@ pattern Seconds ss <- ((`div` (round Second)) . round -> ss) where
 
 pattern Minutes :: Int -> Time -> Time
 pattern Minutes ms rest <- ((`quotRemTime` Minute) -> (ms,rest)) where
-    Minutes ms rest = Minute * (fromIntegral ms) + rest 
+    Minutes ms rest = Minute * (fromIntegral ms) + rest
 
 pattern Hours :: Int -> Time -> Time
 pattern Hours hs rest <- ((`quotRemTime` Hour) -> (hs,rest)) where
@@ -149,10 +150,10 @@ data TimeDiff = TimeDiff
     , years   :: Double
     } deriving (Show,Generic)
 
-instance Default TimeDiff where 
+instance Default TimeDiff where
     def = TimeDiff 0 0 0 0 0 0 0 0
 
-instance Eq TimeDiff where 
+instance Eq TimeDiff where
     (==) t1 t2 = milliseconds t1 == milliseconds t2
 
 instance Ord TimeDiff where
@@ -160,7 +161,7 @@ instance Ord TimeDiff where
 
 instance IsTime TimeDiff where
     toTime = coerce . (1000 *) . seconds
-    fromTime = flip timeDiff (fromTime 0 :: TimeDiff)
+    fromTime = flip timeDiff (def :: TimeDiff)
 
 instance FormatTime TimeDiff where
 #if MIN_VERSION_time(1,8,0)
