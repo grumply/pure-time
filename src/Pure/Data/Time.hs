@@ -1,6 +1,7 @@
 {-# LANGUAGE ViewPatterns, PatternSynonyms, DeriveGeneric, ScopedTypeVariables, CPP, GeneralizedNewtypeDeriving, InstanceSigs, RecordWildCards, OverloadedStrings #-}
 module Pure.Data.Time (module Pure.Data.Time, module Export) where
 
+import Control.Concurrent (threadDelay)
 import Data.Coerce
 import GHC.Generics
 
@@ -74,6 +75,15 @@ pattern Time :: IsTime t => t -> Time
 pattern Time t <- (fromTime -> t) where
     Time t = toTime t
 
+pattern Nanosecond :: Time
+pattern Nanosecond = 1e-6
+
+pattern Microsecond :: Time
+pattern Microsecond = 0.001
+
+pattern Millisecond :: Time
+pattern Millisecond = 1
+
 pattern Second :: Time
 pattern Second = 1000
 
@@ -111,9 +121,21 @@ quotRemTime n d =
   let (q,r) = quotRem (round n) (round d)
   in (q,fromIntegral r)
 
-pattern Seconds :: Int -> Time
-pattern Seconds ss <- ((`div` (round Second)) . round -> ss) where
-    Seconds ss = Second * (fromIntegral ss)
+pattern Nanoseconds :: Int -> Time
+pattern Nanoseconds ns <- (round . (/ Nanosecond) -> ns) where
+    Nanoseconds ns = Nanosecond * (fromIntegral ns)
+
+pattern Microseconds :: Int -> Time -> Time
+pattern Microseconds us rest <- (fmap (/ Microsecond) . properFraction . (/ Microsecond) -> (us,rest)) where
+    Microseconds us rest = Microsecond * (fromIntegral us) + rest
+
+pattern Milliseconds :: Int -> Time -> Time
+pattern Milliseconds ms rest <- (fmap (/ Millisecond) . properFraction . (/ Millisecond) -> (ms,rest)) where
+    Milliseconds ms rest = Millisecond * (fromIntegral ms) + rest
+
+pattern Seconds :: Int -> Time -> Time
+pattern Seconds ss rest <- ((`quotRemTime` Second) -> (ss,rest)) where
+    Seconds ss rest = Second * (fromIntegral ss) + rest
 
 pattern Minutes :: Int -> Time -> Time
 pattern Minutes ms rest <- ((`quotRemTime` Minute) -> (ms,rest)) where
@@ -198,3 +220,6 @@ timeDiffToDiffTime = millisToDiffTime . getTime . toTime
 
 diffTimeToTimeDiff :: DiffTime -> TimeDiff
 diffTimeToTimeDiff = fromTime . coerce . diffTimeToMillis
+
+delay :: Time -> IO ()
+delay (Microseconds n _) = threadDelay n
