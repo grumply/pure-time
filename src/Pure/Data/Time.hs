@@ -99,11 +99,16 @@ pattern Day = 86400000
 pattern Week :: Time
 pattern Week = 604800000
 
+-- 30 days + 10 hours + 29 minutes + 6 seconds
+-- the average month in the 400 year gregorian cycle
 pattern Month :: Time
-pattern Month = 2628000000
+pattern Month = 2629746000
 
+-- 365.2422 days
+-- the average year in the 400 year gregorian cycle
+-- if you want a 365-day year, use (Day * 365).
 pattern Year :: Time
-pattern Year = 31536000000
+pattern Year = 31556926080
 
 time :: IO Time
 time = coerce <$> millis
