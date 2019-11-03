@@ -114,51 +114,44 @@ nominalDiffTime a b = diffMillis (fromTime a) (fromTime b)
 diffTime :: Time -> Time -> DiffTime
 diffTime a b = unsafeCoerce (nominalDiffTime a b)
 
--- Careful with this; it's reasonably safe (to a millisecond) when
--- used on proper Time values.
-quotRemTime :: Time -> Time -> (Int,Time)
-quotRemTime n d =
-  let (q,r) = quotRem (round n) (round d)
-  in (q,fromIntegral r)
-
 pattern Nanoseconds :: Int -> Time
 pattern Nanoseconds ns <- (round . (/ Nanosecond) -> ns) where
     Nanoseconds ns = Nanosecond * (fromIntegral ns)
 
 pattern Microseconds :: Int -> Time -> Time
-pattern Microseconds us rest <- (fmap (/ Microsecond) . properFraction . (/ Microsecond) -> (us,rest)) where
+pattern Microseconds us rest <- (fmap (* Microsecond) . properFraction . (/ Microsecond) -> (us,rest)) where
     Microseconds us rest = Microsecond * (fromIntegral us) + rest
 
 pattern Milliseconds :: Int -> Time -> Time
-pattern Milliseconds ms rest <- (fmap (/ Millisecond) . properFraction . (/ Millisecond) -> (ms,rest)) where
+pattern Milliseconds ms rest <- (fmap (* Millisecond) . properFraction . (/ Millisecond) -> (ms,rest)) where
     Milliseconds ms rest = Millisecond * (fromIntegral ms) + rest
 
 pattern Seconds :: Int -> Time -> Time
-pattern Seconds ss rest <- ((`quotRemTime` Second) -> (ss,rest)) where
+pattern Seconds ss rest <- (fmap (* Second) . properFraction . (/ Second) -> (ss,rest)) where
     Seconds ss rest = Second * (fromIntegral ss) + rest
 
 pattern Minutes :: Int -> Time -> Time
-pattern Minutes ms rest <- ((`quotRemTime` Minute) -> (ms,rest)) where
+pattern Minutes ms rest <- (fmap (* Minute) . properFraction . (/ Minute) -> (ms,rest)) where
     Minutes ms rest = Minute * (fromIntegral ms) + rest
 
 pattern Hours :: Int -> Time -> Time
-pattern Hours hs rest <- ((`quotRemTime` Hour) -> (hs,rest)) where
+pattern Hours hs rest <- (fmap (* Hour) . properFraction . (/ Hour) -> (hs,rest)) where
     Hours hs rest = Hour * (fromIntegral hs) + rest
 
 pattern Days :: Int -> Time -> Time
-pattern Days ds rest <- ((`quotRemTime` Day) -> (ds,rest)) where
+pattern Days ds rest <- (fmap (* Day) . properFraction . (/ Day) -> (ds,rest)) where
     Days ds rest = Day * (fromIntegral ds) + rest
 
 pattern Weeks :: Int -> Time -> Time
-pattern Weeks ws rest <- ((`quotRemTime` Week) -> (ws,rest)) where
+pattern Weeks ws rest <- (fmap (* Week) . properFraction . (/ Week) -> (ws,rest)) where
     Weeks ws rest = Week * (fromIntegral ws) + rest
 
 pattern Months :: Int -> Time -> Time
-pattern Months ms rest <- ((`quotRemTime` Month) -> (ms,rest)) where
+pattern Months ms rest <- (fmap (* Month) . properFraction . (/ Month) -> (ms,rest)) where
     Months ms rest = Month * (fromIntegral ms) + rest
 
 pattern Years :: Int -> Time -> Time
-pattern Years ys rest <- ((`quotRemTime` Year) -> (ys,rest)) where
+pattern Years ys rest <- (fmap (* Year) . properFraction . (/ Year) -> (ys,rest)) where
     Years ys rest = Year * (fromIntegral ys) + rest
 
 data TimeDiff = TimeDiff
