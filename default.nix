@@ -2,7 +2,7 @@
 }:
 mkDerivation {
   pname = "pure-time";
-  version = "0.7.0.0";
+  version = "0.8.0.0";
   src = ./.;
   libraryHaskellDepends = [ base hashable pure-json pure-txt time ];
   homepage = "github.com/grumply/pure-time";

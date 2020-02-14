@@ -1,23 +1,26 @@
 name:                pure-time
-version:             0.7.0.0
-synopsis:
-homepage:            github.com/grumply/pure-time
+version:             0.8.0.0
+homepage:            purehs.org/doc/pure-time
 license:             BSD3
 license-file:        LICENSE
-author:              Sean Mackenzie
-maintainer:          sean@grump.ly
+author:              Sean Hickman
+maintainer:          sean@grumply.com
 category:            Web
 build-type:          Simple
 cabal-version:       >=1.10
 
+source-repository head
+  type: git
+  location: https://github.com/grumply/pure-time.git
+
 library
   build-depends:
-    base >= 4.8 && < 5,
-    hashable >= 1.2 && < 1.3,
-    time < 1.9,
-    pure-txt >= 0.7 && < 1,
-    pure-json >= 0.7 && < 1,
-    pure-default >= 0.7 && < 1
+    base,
+    hashable,
+    time,
+    pure-txt,
+    pure-json,
+    pure-default
 
   hs-source-dirs: src
 
