@@ -12,9 +12,10 @@ import Pure.Data.JSON
 import Pure.Data.Time.Internal as Export
 
 import Data.Time.Format (FormatTime(..),ParseTime(..))
-import Data.Time.LocalTime (utc,utcToZonedTime)
+import Data.Time.LocalTime (utc,utcToZonedTime,timeZoneMinutes,zonedTimeZone,getZonedTime)
 
 import Unsafe.Coerce -- for NominalDiffTime <-> DiffTime
+import System.IO.Unsafe
 
 -- Time and TimeDiff are designed to be stupid easy for the vast majority of use cases
 --
@@ -112,6 +113,20 @@ pattern Year = 31556926080
 
 time :: IO Time
 time = coerce <$> millis
+
+{-# NOINLINE __internal_tzm #-}
+__internal_tzm :: Time
+__internal_tzm = Minutes (unsafePerformIO (timeZoneMinutes . zonedTimeZone <$> getZonedTime)) 0
+
+unsafeLocalizeTime :: Time -> Time
+unsafeLocalizeTime = (+ __internal_tzm)
+
+localizeTime :: Time -> IO Time
+localizeTime t = (+) <$> tzm <*> pure t
+  where
+    tzm = do
+      ms <- timeZoneMinutes . zonedTimeZone <$> getZonedTime
+      pure (Minutes ms 0)
 
 nominalDiffTime :: Time -> Time -> NominalDiffTime
 nominalDiffTime a b = diffMillis (fromTime a) (fromTime b)
