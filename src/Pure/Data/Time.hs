@@ -1,7 +1,7 @@
 {-# LANGUAGE ViewPatterns, PatternSynonyms, DeriveGeneric, ScopedTypeVariables, CPP, GeneralizedNewtypeDeriving, InstanceSigs, RecordWildCards, OverloadedStrings #-}
 module Pure.Data.Time (module Pure.Data.Time, module Export) where
 
-import Control.Concurrent (threadDelay)
+import Control.Concurrent (yield,threadDelay)
 import Data.Coerce
 import GHC.Generics
 
@@ -234,5 +234,8 @@ timeDiffToDiffTime = millisToDiffTime . getTime . toTime
 diffTimeToTimeDiff :: DiffTime -> TimeDiff
 diffTimeToTimeDiff = fromTime . coerce . diffTimeToMillis
 
+-- Unexpected threading results occur with threadDelay 0, so convert it, instead,
+-- to a yield.
 delay :: Time -> IO ()
+delay 0 = yield
 delay (Microseconds n _) = threadDelay n
