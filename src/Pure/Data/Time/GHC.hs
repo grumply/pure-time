@@ -38,23 +38,7 @@ millis :: IO Millis
 millis = Millis <$> timeInMillis
 
 timeInMicros :: IO Double
-timeInMicros = posixToMicros <$> getPOSIXTime
-  where
-    posixToMicros =
-        fromIntegral
-      . numerator
-      . toRational
-      . (* 1000000)
-
+timeInMicros = ((* 1000000) . realToFrac) <$> getPOSIXTime
 
 timeInMillis :: IO Double
-timeInMillis = posixToMillis <$> getPOSIXTime
-  where
-    posixToMillis =
-        fromIntegral
-      . (`div` 1000)
-      . numerator
-      . toRational
-      . (* 1000000)
-
-
+timeInMillis = ((* 1000) . realToFrac) <$> getPOSIXTime

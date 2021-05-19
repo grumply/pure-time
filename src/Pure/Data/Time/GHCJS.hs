@@ -20,10 +20,7 @@ instance Hashable Micros where
   hashWithSalt salt (Micros us) = hashWithSalt salt us
 
 micros :: IO Micros
-micros = Micros <$> timeInMicros
-
-timeInMicros =
-  (*1000) <$> getTime_micros_js
+micros = Micros <$> getTime_micros_js
 
 -- should be able to correctly represent all whole milliseconds up to 285616 years
 newtype Millis = Millis { getMillis :: Double }
@@ -36,14 +33,10 @@ instance Hashable Millis where
   hashWithSalt salt (Millis ms) = hashWithSalt salt ms
 
 millis :: IO Millis
-millis = Millis <$> timeInMillis
-
-timeInMillis =
-  getTime_millis_js
-
-foreign import javascript unsafe
-  "if (performance.now !== 'undefined') { $r = performance.now() + performance.timing.navigationStart } else { $r = new Date().getTime() }" getTime_micros_js :: IO Double
-
+millis = Millis <$> getTime_millis_js
 
 foreign import javascript unsafe
   "$r = new Date().getTime();" getTime_millis_js :: IO Double
+
+foreign import javascript unsafe
+  "$r = 1000 * new Date().getTime();" getTime_micros_js :: IO Double
