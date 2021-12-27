@@ -7,6 +7,7 @@ import GHC.Generics
 
 import Pure.Data.Default
 
+import Pure.Data.Txt
 import Pure.Data.JSON
 
 import Pure.Data.Time.Internal as Export
@@ -14,6 +15,7 @@ import Pure.Data.Time.Internal as Export
 import Data.Time.Format (FormatTime(..),ParseTime(..))
 import Data.Time.LocalTime (utc,utcToZonedTime,timeZoneMinutes,zonedTimeZone,getZonedTime)
 
+import Control.Applicative
 import Unsafe.Coerce -- for NominalDiffTime <-> DiffTime
 import System.IO.Unsafe
 
@@ -36,7 +38,16 @@ import System.IO.Unsafe
 -- > in ft TimeDiff {..}
 
 newtype Time = Time_ { getTime :: Millis }
-    deriving (Show,Eq,Ord,Generic,Num,Real,Fractional,Floating,RealFrac,ToJSON,FromJSON)
+    deriving (Eq,Ord,Generic,Num,Real,Fractional,Floating,RealFrac)
+
+instance Show Time where
+    show t = fromTxt (RFC3339 t)
+
+instance ToJSON Time where
+    toJSON (Time (Millis ms)) = toJSON ms
+
+instance FromJSON Time where
+    parseJSON t = Time . Millis <$> parseJSON t
 
 instance FormatTime Time where
 #if MIN_VERSION_time(1,8,0)
@@ -173,6 +184,17 @@ pattern Months ms rest <- (fmap (* Month) . properFraction . (/ Month) -> (ms,re
 pattern Years :: Int -> Time -> Time
 pattern Years ys rest <- (fmap (* Year) . properFraction . (/ Year) -> (ys,rest)) where
     Years ys rest = Year * (fromIntegral ys) + rest
+
+parseRFC3339 :: ToTxt x => x -> Maybe Time
+parseRFC3339 txt =
+  parseTime "%Y-%m-%dT%H:%M:%SZ" txt
+    <|> parseTime "%Y-%m-%dT%H:%M:%S%z" txt
+    <|> parseTime "%Y-%m-%dT%H:%M:%S%QZ" txt
+    <|> parseTime "%Y-%m-%dT%H:%M:%S%Q%z" txt
+
+pattern RFC3339 :: Time -> Txt
+pattern RFC3339 t <- (parseRFC3339 -> Just t) where
+  RFC3339 t = formatTime "%Y-%m-%dT%H:%M:%SZ" t
 
 data TimeDiff = TimeDiff
     { milliseconds :: Double
